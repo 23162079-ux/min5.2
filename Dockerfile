@@ -1,17 +1,25 @@
-# Build stage
-FROM maven:3.9.6-eclipse-temurin-17 AS build
+# Stage 1: Build WAR bằng Maven
+FROM maven:3.9.8-eclipse-temurin-21 AS builder
 WORKDIR /app
-COPY . .
+
+# Copy pom.xml và src để Maven build
+COPY pom.xml .
+COPY src ./src
+
+# Build file WAR
 RUN mvn clean package -DskipTests
 
-# Runtime stage
-FROM tomcat:10.1-jdk17
+# Stage 2: Run với Tomcat
+FROM tomcat:10.1-jdk21
+
+# Xóa webapp mặc định của Tomcat
 RUN rm -rf /usr/local/tomcat/webapps/*
-COPY --from=build /app/target/Baitap2.war /usr/local/tomcat/webapps/ROOT.war
 
-# Render port configuration
-ENV PORT=10000
-EXPOSE $PORT
+# Copy WAR từ stage 1 vào Tomcat
+COPY --from=builder /app/target/*.war /usr/local/tomcat/webapps/ROOT.war
 
-# Sửa port và chạy Tomcat - CÚ PHÁP ĐÚNG
-CMD bash -c "sed -i 's/port=\"8080\"/port=\"$PORT\"/' /usr/local/tomcat/conf/server.xml && catalina.sh run"
+# Expose cổng
+EXPOSE 8080
+
+# Chạy Tomcat
+CMD ["catalina.sh", "run"]
